@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dibuja la frase</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;1,9..144,500&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf6ef;--card:#fff;--ink:#2a2622;--muted:#7a7068;--line:#e6dfd3;--accent:#d9532b;--accent-d:#b84320;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Inter,system-ui,sans-serif}
+main{max-width:880px;margin:0 auto;padding:20px 16px 60px}
+h1{font:600 14px/1 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:8px 0 18px}
+h2{font:500 26px/1.2 Fraunces,Georgia,serif;margin:0 0 8px}
+.phrase{font:italic 500 clamp(26px,5vw,42px)/1.2 Fraunces,Georgia,serif;margin:0 0 6px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
+.hidden{display:none!important}
+.muted{color:var(--muted);font-size:14px}
+button{font:600 15px Inter,sans-serif;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:10px;padding:9px 14px;cursor:pointer}
+button:hover{border-color:#cfc5b4}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.primary:hover{background:var(--accent-d)}
+button.link{border:0;background:none;color:var(--muted);text-decoration:underline;padding:4px;font-weight:400;font-size:13px}
+button:disabled{opacity:.5;cursor:default}
+input[type=text],textarea{width:100%;font:16px Inter,sans-serif;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
+textarea{resize:vertical;min-height:60px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chips button{font-weight:400;font-size:13px;padding:5px 10px;border-radius:99px}
+.host{border-style:dashed;background:#fffdf9}
+.host h3{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.code{font:600 34px/1 Fraunces,Georgia,serif;letter-spacing:.18em}
+.share input{font-size:13px;padding:7px 10px}
+canvas.board{width:100%;aspect-ratio:4/3;display:block;background:#fff;border:1px solid var(--line);border-radius:12px;touch-action:none;cursor:crosshair}
+.tools{margin:10px 0}
+.sw{width:30px;height:30px;border-radius:50%;padding:0;border:3px solid #fff;box-shadow:0 0 0 1px var(--line)}
+.sw.on{box-shadow:0 0 0 2px var(--ink)}
+.sz{width:36px;height:36px;padding:0;display:grid;place-items:center}
+.sz i{display:block;border-radius:50%;background:var(--ink)}
+.sz.on,.tl.on{border-color:var(--ink);background:#f3ede2}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;cursor:pointer;transition:transform .12s}
+.tile:hover{transform:translateY(-2px)}
+.tile canvas{width:100%;aspect-ratio:4/3;display:block;border-radius:8px;border:1px solid var(--line)}
+.tile .who{font-weight:600;margin-top:8px;font-size:14px}
+.tile .cap{font-size:14px;color:var(--muted);margin-top:2px;min-height:1.4em}
+.tile.mine{outline:2px solid var(--accent)}
+#lb{position:fixed;inset:0;background:rgba(30,25,20,.82);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
+#lb .box{background:#fff;border-radius:16px;padding:14px;max-width:900px;width:100%}
+#lb canvas{width:100%;aspect-ratio:4/3;display:block;border:1px solid var(--line);border-radius:10px}
+#lb .meta{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+.note{font-size:14px;padding:10px 12px;border-radius:10px;background:#fff3e0;border:1px solid #f0d9b0;margin-bottom:14px}
+.center{max-width:460px;margin:8vh auto 0}
+</style>
+</head>
+<body>
+<main>
+  <div id="notice" class="note hidden"></div>
+
+  <!-- Inicio -->
+  <section id="landing" class="hidden center">
+    <h1>Dibuja la frase</h1>
+    <div class="card">
+      <h2>Facilitar una dinámica</h2>
+      <p class="muted">Pones una frase, cada persona la dibuja a su manera y después todos los dibujos se muestran a la vez.</p>
+      <button class="primary" id="createBtn">Crear sesión</button>
+    </div>
+    <div class="card">
+      <h2>Unirme a una sesión</h2>
+      <div class="row"><input type="text" id="codeIn" maxlength="4" placeholder="Código de 4 letras" style="max-width:200px;text-transform:uppercase"><button id="joinBtn">Entrar</button></div>
+    </div>
+  </section>
+
+  <!-- Nombre -->
+  <section id="nameScreen" class="hidden center">
+    <h1>Dibuja la frase</h1>
+    <div class="card">
+      <h2>¿Cómo te llamas?</h2>
+      <p class="muted">Tu nombre aparecerá junto a tu dibujo cuando se revele (el facilitador puede ocultarlo).</p>
+      <div class="row"><input type="text" id="nameIn" maxlength="30" placeholder="Tu nombre" style="max-width:280px"><button class="primary" id="nameBtn">Entrar</button></div>
+    </div>
+  </section>
+
+  <!-- Sesión -->
+  <section id="app" class="hidden">
+    <h1>Dibuja la frase</h1>
+
+    <div id="hostPanel" class="card host hidden">
+      <h3>Panel del facilitador</h3>
+      <div class="row" style="justify-content:space-between;align-items:flex-end">
+        <div><div class="muted">Código de la sesión</div><div class="code" id="codeShow"></div></div>
+        <div class="share" style="flex:1;min-width:240px">
+          <div class="muted">Enlace para los participantes</div>
+          <div class="row" style="flex-wrap:nowrap"><input type="text" id="partLink" readonly><button id="copyPart">Copiar</button></div>
+        </div>
+      </div>
+      <details style="margin:10px 0"><summary class="muted" style="cursor:pointer">Enlace de facilitador (para volver a entrar o cambiar de dispositivo)</summary>
+        <div class="row share" style="flex-wrap:nowrap;margin-top:6px"><input type="text" id="hostLink" readonly><button id="copyHost">Copiar</button></div>
+        <p class="muted" style="margin:4px 0 0">No lo compartas: quien lo tenga controla la sesión.</p>
+      </details>
+      <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
+      <textarea id="phraseIn" maxlength="200" placeholder="Escribe la frase de la dinámica…"></textarea>
+      <div class="row chips" style="margin:8px 0" id="examples"></div>
+      <div class="row">
+        <button class="primary" id="launchBtn">Lanzar frase</button>
+        <button id="revealBtn" class="hidden">Revelar dibujos</button>
+        <button id="hideBtn" class="hidden">Volver a dibujar</button>
+        <label class="muted row" style="gap:6px"><input type="checkbox" id="namesChk" checked> Mostrar nombres</label>
+      </div>
+      <p class="muted" id="hostCount" style="margin:10px 0 0"></p>
+    </div>
+
+    <div id="waiting" class="card hidden"><p style="margin:0">Esperando a que el facilitador ponga la frase…</p></div>
+
+    <div id="stage" class="hidden">
+      <p class="muted" id="stageLabel" style="margin:0 0 4px"></p>
+      <p class="phrase" id="phrase"></p>
+
+      <div id="drawView">
+        <p class="muted" style="margin:0 0 12px">Dibuja lo que esta frase significa para ti. Cuando el facilitador lo indique, se mostrarán todos los dibujos.</p>
+        <canvas id="board" class="board" width="800" height="600"></canvas>
+        <div class="tools row" id="tools"></div>
+        <input type="text" id="caption" maxlength="100" placeholder="(Opcional) Explica tu dibujo en una frase">
+        <div class="row" style="margin-top:12px">
+          <button class="primary" id="sendBtn">Enviar mi dibujo</button>
+          <span class="muted" id="sendStatus"></span>
+        </div>
+        <p class="muted" id="count" style="margin-top:12px"></p>
+        <button class="link" id="renameBtn">Cambiar mi nombre</button>
+      </div>
+
+      <div id="hostWait" class="card hidden"><p style="margin:0" id="hostWaitTxt"></p></div>
+
+      <div id="revealView" class="hidden">
+        <div class="grid" id="grid"></div>
+        <p class="muted" id="emptyReveal"></p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="lb" class="hidden">
+  <div class="box">
+    <canvas id="lbCanvas" width="800" height="600"></canvas>
+    <div class="meta">
+      <div><div id="lbWho" style="font-weight:600"></div><div id="lbCap" class="muted"></div></div>
+      <div class="row"><button id="lbRemove" class="hidden">Quitar</button><button id="lbPrev">←</button><button id="lbNext">→</button><button id="lbClose">Cerrar</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var W=800,H=600;
+  var COLORS=['#1f1b18','#d9532b','#e8a317','#2f8f5b','#2a6fdb','#8a4fc7'];
+  var SIZES=[4,10,22];
+  var EXAMPLES=['Un buen equipo','El futuro del trabajo','Mi lugar seguro','Cambio','Liderar'];
+  var $=function(id){return document.getElementById(id)};
+  var ls={get:function(k){try{return localStorage.getItem(k)}catch(e){return null}},set:function(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+  function rand(){
+    if(window.crypto&&crypto.randomUUID)return crypto.randomUUID();
+    return Math.random().toString(36).slice(2)+Date.now().toString(36)+Math.random().toString(36).slice(2);
+  }
+
+  var params=new URLSearchParams(location.search);
+  var code=(params.get('r')||'').toUpperCase().replace(/[^A-Z]/g,'').slice(0,4);
+  var hostKey=null;
+  var hm=location.hash.match(/k=([A-Za-z0-9_-]+)/);
+  if(hm){hostKey=hm[1];if(code)ls.set('dlf_k_'+code,hostKey)}else if(code)hostKey=ls.get('dlf_k_'+code);
+  var pid=ls.get('dlf_pid');if(!pid||!/^[\w-]{8,64}$/.test(pid)){pid=rand();ls.set('dlf_pid',pid)}
+  var name=ls.get('dlf_name')||'';
+
+  var S=null,isHost=false,es=null;
+  var curRound=null,strokes=[],cur=null,color=COLORS[0],size=SIZES[1],tool='pen',sent=false,busy=false;
+  var lbList=[],lbIdx=0;
+  var board=$('board'),ctx=board.getContext('2d');
+
+  function show(id){['landing','nameScreen','app'].forEach(function(s){$(s).classList.toggle('hidden',s!==id)})}
+  function notice(t){var n=$('notice');if(t){n.textContent=t;n.classList.remove('hidden')}else n.classList.add('hidden')}
+  function post(path,body){
+    return fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+      .then(function(r){return r.json().catch(function(){return {}}).then(function(j){return {ok:r.ok,status:r.status,json:j}})});
+  }
+
+  /* ---------- dibujo ---------- */
+  function paint(c,list){
+    c.fillStyle='#fff';c.fillRect(0,0,W,H);c.lineCap='round';c.lineJoin='round';
+    (list||[]).forEach(function(s){
+      var p=s.p;if(!p||p.length<2)return;
+      c.strokeStyle=s.c;c.fillStyle=s.c;c.lineWidth=s.w;
+      if(p.length<4){c.beginPath();c.arc(p[0],p[1],s.w/2,0,Math.PI*2);c.fill();return}
+      c.beginPath();c.moveTo(p[0],p[1]);
+      for(var i=2;i<p.length-2;i+=2)c.quadraticCurveTo(p[i],p[i+1],(p[i]+p[i+2])/2,(p[i+1]+p[i+3])/2);
+      c.lineTo(p[p.length-2],p[p.length-1]);c.stroke();
+    });
+  }
+  function redraw(){paint(ctx,strokes)}
+  function pt(e){var r=board.getBoundingClientRect();return [Math.round((e.clientX-r.left)*W/r.width),Math.round((e.clientY-r.top)*H/r.height)]}
+  function addPt(e){
+    var q=pt(e),p=cur.p,n=p.length;
+    if(n>=2&&Math.abs(p[n-2]-q[0])<2&&Math.abs(p[n-1]-q[1])<2)return;
+    p.push(q[0],q[1]);
+  }
+  function locked(){return !S||S.phase!=='draw'||isHost}
+  board.addEventListener('pointerdown',function(e){
+    if(locked())return;
+    e.preventDefault();board.setPointerCapture(e.pointerId);
+    cur={c:tool==='eraser'?'#ffffff':color,w:tool==='eraser'?size*1.8:size,p:[]};
+    addPt(e);strokes.push(cur);redraw();setStatus('');
+  });
+  board.addEventListener('pointermove',function(e){if(!cur)return;addPt(e);redraw()});
+  ['pointerup','pointercancel'].forEach(function(t){board.addEventListener(t,function(){cur=null})});
+
+  function buildTools(){
+    var t=$('tools');t.innerHTML='';
+    COLORS.forEach(function(c){
+      var b=document.createElement('button');b.className='sw'+(c===color&&tool==='pen'?' on':'');
+      b.style.background=c;b.setAttribute('aria-label','Color '+c);
+      b.onclick=function(){color=c;tool='pen';buildTools()};t.appendChild(b);
+    });
+    SIZES.forEach(function(s){
+      var b=document.createElement('button');b.className='sz'+(s===size?' on':'');
+      var i=document.createElement('i');i.style.width=i.style.height=(4+s/2)+'px';b.appendChild(i);
+      b.setAttribute('aria-label','Grosor '+s);b.onclick=function(){size=s;buildTools()};t.appendChild(b);
+    });
+    var er=document.createElement('button');er.className='tl'+(tool==='eraser'?' on':'');er.textContent='Goma';
+    er.onclick=function(){tool=tool==='eraser'?'pen':'eraser';buildTools()};t.appendChild(er);
+    var un=document.createElement('button');un.textContent='Deshacer';
+    un.onclick=function(){if(locked())return;strokes.pop();redraw()};t.appendChild(un);
+    var cl=document.createElement('button');cl.textContent='Borrar todo';
+    cl.onclick=function(){if(locked())return;strokes=[];redraw()};t.appendChild(cl);
+  }
+  function setStatus(t){$('sendStatus').textContent=t||''}
+  function sendLabel(){$('sendBtn').textContent=sent?'Actualizar mi dibujo':'Enviar mi dibujo'}
+
+  function submit(){
+    if(busy||locked())return;
+    if(!strokes.length){setStatus('Dibuja algo antes de enviar.');return}
+    busy=true;$('sendBtn').disabled=true;setStatus('Enviando…');
+    post('/api/rooms/'+code+'/drawing',{pid:pid,name:name,strokes:strokes,caption:$('caption').value.trim()})
+      .then(function(r){
+        if(r.ok){sent=true;setStatus('Entregado ✓ Puedes seguir editando y volver a enviar hasta que se revele.')}
+        else setStatus(r.json&&r.json.error||'No se pudo enviar. Inténtalo de nuevo.');
+      }).catch(function(){setStatus('Sin conexión. Inténtalo de nuevo.')})
+      .then(function(){busy=false;$('sendBtn').disabled=false;sendLabel()});
+  }
+
+  /* ---------- render ---------- */
+  function render(){
+    isHost=!!S.host;
+    var idle=S.phase==='idle',reveal=S.phase==='reveal';
+    $('hostPanel').classList.toggle('hidden',!isHost);
+    $('waiting').classList.toggle('hidden',!(idle&&!isHost));
+    $('stage').classList.toggle('hidden',idle);
+    if(isHost){
+      $('launchBtn').textContent=idle?'Lanzar frase':'Lanzar nueva ronda';
+      $('revealBtn').classList.toggle('hidden',idle||reveal);
+      $('hideBtn').classList.toggle('hidden',!reveal);
+      $('namesChk').checked=!!S.showNames;
+      $('hostCount').textContent=S.online+(S.online===1?' participante conectado':' participantes conectados')+' · '+S.count+(S.count===1?' dibujo entregado':' dibujos entregados');
+    }
+    if(idle)return;
+    $('phrase').textContent='“'+S.phrase+'”';
+    $('stageLabel').textContent='Ronda '+S.round+(reveal?' · todos los dibujos':' · dibujando');
+    $('drawView').classList.toggle('hidden',reveal||isHost);
+    $('hostWait').classList.toggle('hidden',reveal||!isHost);
+    $('revealView').classList.toggle('hidden',!reveal);
+    $('hostWaitTxt').textContent='Los participantes están dibujando… '+S.count+' de '+S.online+' han entregado. Pulsa «Revelar dibujos» cuando quieras mostrarlos.';
+    if(!isHost){
+      if(curRound!==S.round){
+        curRound=S.round;
+        strokes=S.mine?S.mine.strokes.slice():[];
+        $('caption').value=S.mine?(S.mine.caption||''):'';
+        sent=!!S.mine;redraw();
+        setStatus(sent?'Ya enviaste un dibujo en esta ronda.':'');
+      }
+      $('count').textContent=S.count+(S.count===1?' dibujo entregado':' dibujos entregados');
+      sendLabel();
+    }
+    if(reveal)renderGrid();
+  }
+
+  function renderGrid(){
+    var grid=$('grid'),list=S.drawings||[];
+    grid.innerHTML='';lbList=[];
+    $('emptyReveal').textContent=list.length?'':'Nadie entregó un dibujo en esta ronda.';
+    list.forEach(function(d,i){
+      var who=S.showNames&&d.name?d.name:'Dibujo '+(i+1);
+      lbList.push({d:d,who:who});
+      var tile=document.createElement('div');tile.className='tile'+(d.mine?' mine':'');
+      var c=document.createElement('canvas');c.width=W;c.height=H;paint(c.getContext('2d'),d.strokes);
+      var w=document.createElement('div');w.className='who';w.textContent=who;
+      var cp=document.createElement('div');cp.className='cap';cp.textContent=d.caption||'';
+      tile.appendChild(c);tile.appendChild(w);tile.appendChild(cp);
+      tile.onclick=function(){openLb(i)};grid.appendChild(tile);
+    });
+    if(!$('lb').classList.contains('hidden')){
+      if(lbIdx>=lbList.length)lbIdx=lbList.length-1;
+      if(lbIdx<0)$('lb').classList.add('hidden');else showLb();
+    }
+  }
+
+  /* ---------- visor ---------- */
+  function openLb(i){lbIdx=i;showLb();$('lb').classList.remove('hidden')}
+  function showLb(){
+    var it=lbList[lbIdx];if(!it)return;
+    paint($('lbCanvas').getContext('2d'),it.d.strokes);
+    $('lbWho').textContent=it.who;$('lbCap').textContent=it.d.caption||'';
+    $('lbRemove').classList.toggle('hidden',!isHost);
+  }
+  function stepLb(k){if(!lbList.length)return;lbIdx=(lbIdx+k+lbList.length)%lbList.length;showLb()}
+  $('lbPrev').onclick=function(){stepLb(-1)};
+  $('lbNext').onclick=function(){stepLb(1)};
+  $('lbClose').onclick=function(){$('lb').classList.add('hidden')};
+  $('lbRemove').onclick=function(){
+    var it=lbList[lbIdx];if(!it||!isHost)return;
+    post('/api/rooms/'+code+'/remove',{k:hostKey,id:it.d.id});
+  };
+  $('lb').addEventListener('click',function(e){if(e.target===$('lb'))$('lb').classList.add('hidden')});
+  document.addEventListener('keydown',function(e){
+    if($('lb').classList.contains('hidden'))return;
+    if(e.key==='Escape')$('lb').classList.add('hidden');
+    if(e.key==='ArrowLeft')stepLb(-1);
+    if(e.key==='ArrowRight')stepLb(1);
+  });
+
+  /* ---------- conexión ---------- */
+  function connect(){
+    var url='/api/rooms/'+code+'/events?pid='+encodeURIComponent(pid)+(hostKey?'&k='+encodeURIComponent(hostKey):'');
+    es=new EventSource(url);
+    es.addEventListener('state',function(e){notice('');S=JSON.parse(e.data);render()});
+    es.onerror=function(){
+      if(es.readyState===2)notice('La sesión terminó o ya no existe.');
+      else notice('Reconectando…');
+    };
+  }
+  function copy(inputId,btn){
+    var i=$(inputId);i.select();
+    var ok=false;
+    try{navigator.clipboard.writeText(i.value).then(function(){btn.textContent='Copiado ✓';setTimeout(function(){btn.textContent='Copiar'},1500)}).catch(function(){});ok=true}catch(e){}
+    if(!ok)try{document.execCommand('copy')}catch(e){}
+  }
+
+  function start(){
+    show('app');buildTools();redraw();
+    $('codeShow').textContent=code;
+    var base=location.origin+'/?r='+code;
+    $('partLink').value=base;
+    $('hostLink').value=hostKey?base+'#k='+hostKey:'';
+    connect();
+  }
+
+  $('createBtn').onclick=function(){
+    $('createBtn').disabled=true;
+    post('/api/rooms',{}).then(function(r){
+      if(!r.ok){notice(r.json&&r.json.error||'No se pudo crear la sesión.');$('createBtn').disabled=false;return}
+      ls.set('dlf_k_'+r.json.code,r.json.hostKey);
+      location.href='/?r='+r.json.code+'#k='+r.json.hostKey;
+    }).catch(function(){notice('Sin conexión con el servidor.');$('createBtn').disabled=false});
+  };
+  function joinCode(){
+    var c=$('codeIn').value.toUpperCase().replace(/[^A-Z]/g,'');
+    if(c.length===4)location.href='/?r='+c;else notice('El código tiene 4 letras.');
+  }
+  $('joinBtn').onclick=joinCode;
+  $('codeIn').addEventListener('keydown',function(e){if(e.key==='Enter')joinCode()});
+  function saveName(){
+    var n=$('nameIn').value.trim().slice(0,30);if(!n)return;
+    name=n;ls.set('dlf_name',n);start();
+  }
+  $('nameBtn').onclick=saveName;
+  $('nameIn').addEventListener('keydown',function(e){if(e.key==='Enter')saveName()});
+  $('renameBtn').onclick=function(){if(es)es.close();$('nameIn').value=name;show('nameScreen')};
+
+  $('sendBtn').onclick=submit;
+  $('launchBtn').onclick=function(){
+    var phrase=$('phraseIn').value.trim();if(!phrase)return;
+    post('/api/rooms/'+code+'/phrase',{k:hostKey,phrase:phrase,showNames:$('namesChk').checked})
+      .then(function(r){if(r.ok)$('phraseIn').value='';else notice(r.json&&r.json.error||'No se pudo lanzar la frase.')});
+  };
+  $('revealBtn').onclick=function(){post('/api/rooms/'+code+'/phase',{k:hostKey,phase:'reveal'})};
+  $('hideBtn').onclick=function(){post('/api/rooms/'+code+'/phase',{k:hostKey,phase:'draw'})};
+  $('namesChk').onchange=function(){post('/api/rooms/'+code+'/names',{k:hostKey,showNames:$('namesChk').checked})};
+  $('copyPart').onclick=function(){copy('partLink',$('copyPart'))};
+  $('copyHost').onclick=function(){copy('hostLink',$('copyHost'))};
+  EXAMPLES.forEach(function(t){
+    var b=document.createElement('button');b.textContent=t;
+    b.onclick=function(){$('phraseIn').value=t};$('examples').appendChild(b);
+  });
+
+  function init(){
+    if(!code){show('landing');return}
+    fetch('/api/rooms/'+code).then(function(r){
+      if(r.status===404){show('landing');notice('No existe la sesión '+code+'. Revisa el código o crea una nueva.');return}
+      if(!hostKey&&!name){show('nameScreen');return}
+      start();
+    }).catch(function(){show('landing');notice('No se pudo conectar con el servidor.')});
+  }
+  init();
+})();
+</script>
+</body>
+</html>
